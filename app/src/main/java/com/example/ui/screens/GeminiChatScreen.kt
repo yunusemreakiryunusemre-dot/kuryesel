@@ -26,6 +26,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,6 +76,8 @@ fun GeminiChatScreen(
     messages: List<ChatMessage>,
     isLoading: Boolean,
     summary: CourierSummary,
+    isApiKeyConfigured: Boolean = true,
+    onOpenSettings: () -> Unit = {},
     onSendMessage: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -94,38 +99,92 @@ fun GeminiChatScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(PastelPurple.copy(alpha = 0.2f))
+                        .border(1.dp, PastelPurple, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = PastelPurple,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(
+                        text = "Gemini Vergi Asistanı",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Cüzdan: ${CourierViewModel.formatCurrency(summary.netBalance)} • KDV Tasarrufu: ${CourierViewModel.formatCurrency(summary.deductibleVat)}",
+                        color = NeonGreen,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            IconButton(
+                onClick = onOpenSettings,
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(PastelPurple.copy(alpha = 0.2f))
-                    .border(1.dp, PastelPurple, CircleShape),
-                contentAlignment = Alignment.Center
+                    .background(DarkSurfaceVariant)
+                    .border(1.dp, DarkBorder, CircleShape)
+                    .testTag("chat_settings_button")
             ) {
                 Icon(
-                    Icons.Default.AutoAwesome,
-                    contentDescription = null,
-                    tint = PastelPurple,
-                    modifier = Modifier.size(20.dp)
+                    Icons.Default.Settings,
+                    contentDescription = "Ayarlar",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column {
-                Text(
-                    text = "Gemini Vergi & Muhasebe Asistanı",
-                    color = TextPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "Cüzdan Bakiyen: ${CourierViewModel.formatCurrency(summary.netBalance)} • KDV Tasarrufu: ${CourierViewModel.formatCurrency(summary.deductibleVat)}",
-                    color = NeonGreen,
-                    fontSize = 11.sp
-                )
+        // Warning banner if API key is missing
+        if (!isApiKeyConfigured) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PastelPurple.copy(alpha = 0.15f))
+                    .border(1.dp, PastelPurple.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "⚠️ Gemini API Key girilmedi",
+                        color = TextPrimary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Button(
+                        onClick = onOpenSettings,
+                        colors = ButtonDefaults.buttonColors(containerColor = PastelPurple),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Text("⚙️ Key Gir", color = PureBlack, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                    }
+                }
             }
         }
 

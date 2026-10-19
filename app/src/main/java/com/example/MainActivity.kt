@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
                     factory = object : ViewModelProvider.Factory {
                         @Suppress("UNCHECKED_CAST")
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            return CourierViewModel(repo) as T
+                            return CourierViewModel(repo, applicationContext) as T
                         }
                     }
                 )
@@ -119,6 +119,7 @@ fun CourierApp(viewModel: CourierViewModel) {
 
     val summary by viewModel.summary.collectAsState()
     val courierName by viewModel.courierName.collectAsState()
+    val geminiApiKey by viewModel.geminiApiKey.collectAsState()
     val allTransactions by viewModel.allTransactions.collectAsState()
     val recentTransactions by viewModel.recentTransactions.collectAsState()
     val envelopes by viewModel.envelopes.collectAsState()
@@ -197,6 +198,8 @@ fun CourierApp(viewModel: CourierViewModel) {
                         messages = chatMessages,
                         isLoading = isChatLoading,
                         summary = summary,
+                        isApiKeyConfigured = viewModel.getEffectiveApiKey().isNotBlank(),
+                        onOpenSettings = { showSettingsDialog = true },
                         onSendMessage = { viewModel.sendChatMessage(it) }
                     )
                 }
@@ -220,6 +223,11 @@ fun CourierApp(viewModel: CourierViewModel) {
         ScanReceiptDialog(
             envelopes = envelopes,
             scanState = scanState,
+            isApiKeyConfigured = viewModel.getEffectiveApiKey().isNotBlank(),
+            onOpenSettings = {
+                showScanReceiptDialog = false
+                showSettingsDialog = true
+            },
             onDismiss = {
                 viewModel.clearScanState()
                 showScanReceiptDialog = false
@@ -264,10 +272,13 @@ fun CourierApp(viewModel: CourierViewModel) {
     if (showSettingsDialog) {
         SettingsDialog(
             currentName = courierName,
+            currentApiKey = geminiApiKey,
             companyReceivable = summary.companyReceivable,
             paidHakedis = summary.paidHakedis,
             onDismiss = { showSettingsDialog = false },
             onSaveName = { viewModel.setCourierName(it) },
+            onSaveApiKey = { viewModel.saveGeminiApiKey(it) },
+            onClearApiKey = { viewModel.clearGeminiApiKey() },
             onConfirmHakedisPayout = { viewModel.confirmHakedisPayout() },
             onResetData = { viewModel.resetAllData() }
         )

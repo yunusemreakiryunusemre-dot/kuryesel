@@ -39,10 +39,27 @@ class GeminiService {
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private val apiKey = BuildConfig.GEMINI_API_KEY
+    private fun resolveApiKey(apiKeyOverride: String?): String {
+        val override = apiKeyOverride?.trim()
+        if (!override.isNullOrBlank()) {
+            return override
+        }
+        val buildKey = BuildConfig.GEMINI_API_KEY.trim()
+        if (buildKey.isNotBlank() && buildKey != "null") {
+            return buildKey
+        }
+        return ""
+    }
 
-    suspend fun scanReceipt(bitmap: Bitmap): Result<ParsedReceipt> = withContext(Dispatchers.IO) {
+    suspend fun scanReceipt(bitmap: Bitmap, apiKeyOverride: String? = null): Result<ParsedReceipt> = withContext(Dispatchers.IO) {
         try {
+            val key = resolveApiKey(apiKeyOverride)
+            if (key.isBlank()) {
+                return@withContext Result.failure(
+                    Exception("Gemini API Anahtarı bulunamadı. Lütfen sağ üstteki Ayarlar (⚙️) menüsünden kendi Gemini API Key'inizi girip kaydediniz.")
+                )
+            }
+
             val outputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, outputStream)
             val base64Image = Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
@@ -85,7 +102,7 @@ class GeminiService {
 
             val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=$apiKey")
+                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=$key")
                 .post(requestBody)
                 .build()
 
@@ -144,9 +161,17 @@ class GeminiService {
     suspend fun chatWithAssistant(
         history: List<ChatMessage>,
         userMessage: String,
-        courierContext: String
+        courierContext: String,
+        apiKeyOverride: String? = null
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
+            val key = resolveApiKey(apiKeyOverride)
+            if (key.isBlank()) {
+                return@withContext Result.failure(
+                    Exception("Gemini API Anahtarı bulunamadı. Lütfen sağ üstteki Ayarlar (⚙️) menüsünden kendi Gemini API Key'inizi girip kaydediniz.")
+                )
+            }
+
             val systemInstruction = """
                 Sen şahıs şirketi olan motosikletli kuryelerin (Trendyol Go, Getir, Yemeksepeti, Vigo vb.) kişisel mali müşaviri ve vergi uzmanısın.
                 Adın: 'KuryeCüzdan Yapay Zeka Asistanı'.
@@ -208,7 +233,7 @@ class GeminiService {
 
             val requestBody = requestJson.toString().toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
-                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=$apiKey")
+                .url("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=$key")
                 .post(requestBody)
                 .build()
 

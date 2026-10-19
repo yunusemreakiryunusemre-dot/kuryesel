@@ -78,6 +78,8 @@ import com.example.ui.theme.TextSecondary
 fun ScanReceiptDialog(
     envelopes: List<EnvelopeEntity>,
     scanState: ScanUiState,
+    isApiKeyConfigured: Boolean = true,
+    onOpenSettings: () -> Unit = {},
     onDismiss: () -> Unit,
     onScanImage: (Bitmap) -> Unit,
     onConfirmParsed: (title: String, amount: Double, envelopeId: Int?, envelopeName: String?, vatRate: Int, note: String?) -> Unit
@@ -142,6 +144,45 @@ fun ScanReceiptDialog(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
+
+                if (!isApiKeyConfigured) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(PastelPurple.copy(alpha = 0.15f))
+                            .border(1.dp, PastelPurple.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .padding(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Gemini API Key Gerekli",
+                                    color = TextPrimary,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                                Text(
+                                    text = "Fiş tarama için kendi API anahtarınızı kaydedin.",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Button(
+                                onClick = onOpenSettings,
+                                colors = ButtonDefaults.buttonColors(containerColor = PastelPurple),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("⚙️ Ayarla", color = PureBlack, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 // Image upload / preview box
                 if (selectedBitmap == null) {
@@ -254,13 +295,25 @@ fun ScanReceiptDialog(
                                 fontSize = 13.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = { selectedBitmap?.let { onScanImage(it) } },
-                            colors = ButtonDefaults.buttonColors(containerColor = CourierOrange),
-                            shape = RoundedCornerShape(12.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text("Tekrar Dene", color = PureBlack, fontWeight = FontWeight.Bold)
+                            OutlinedButton(
+                                onClick = onOpenSettings,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("⚙️ Ayarlar", color = TextPrimary)
+                            }
+                            Button(
+                                onClick = { selectedBitmap?.let { onScanImage(it) } },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = CourierOrange),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Tekrar Dene", color = PureBlack, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
 

@@ -8,6 +8,7 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.BuildConfig
 import com.example.ai.ChatMessage
 import com.example.ai.GeminiService
 import com.example.ai.ParsedReceipt
@@ -54,8 +55,46 @@ data class CourierSummary(
 
 class CourierViewModel(
     private val repository: CourierRepository,
+    private val context: Context? = null,
     private val geminiService: GeminiService = GeminiService()
 ) : ViewModel() {
+
+    private val prefs = context?.getSharedPreferences("kurye_cuzdan_prefs", Context.MODE_PRIVATE)
+
+    private val _geminiApiKey = MutableStateFlow(
+        prefs?.getString("gemini_api_key", "") ?: ""
+    )
+    val geminiApiKey: StateFlow<String> = _geminiApiKey.asStateFlow()
+
+    private val _courierName = MutableStateFlow(
+        prefs?.getString("courier_name", "Burak") ?: "Burak"
+    )
+    val courierName: StateFlow<String> = _courierName.asStateFlow()
+
+    fun saveGeminiApiKey(key: String) {
+        val trimmed = key.trim()
+        _geminiApiKey.value = trimmed
+        prefs?.edit()?.putString("gemini_api_key", trimmed)?.apply()
+    }
+
+    fun clearGeminiApiKey() {
+        _geminiApiKey.value = ""
+        prefs?.edit()?.remove("gemini_api_key")?.apply()
+    }
+
+    fun setCourierName(name: String) {
+        val trimmed = name.trim().ifBlank { "Burak" }
+        _courierName.value = trimmed
+        prefs?.edit()?.putString("courier_name", trimmed)?.apply()
+    }
+
+    fun getEffectiveApiKey(): String {
+        val userKey = _geminiApiKey.value.trim()
+        if (userKey.isNotBlank()) return userKey
+        val buildKey = BuildConfig.GEMINI_API_KEY.trim()
+        if (buildKey.isNotBlank() && buildKey != "null") return buildKey
+        return ""
+    }
 
     val envelopes: StateFlow<List<EnvelopeEntity>> = repository.allEnvelopes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -72,7 +111,7 @@ class CourierViewModel(
     private val _chatMessages = MutableStateFlow<List<ChatMessage>>(
         listOf(
             ChatMessage(
-                text = "Selam Burak! Ben KuryeCüzdan mali asistanınım. Bu ayki KDV durumun, kapıda nakit tahsilat mahsuplaşması, hak edişlerin veya Bağkur ödemelerinle ilgili aklına takılan her şeyi bana sorabilirsin.",
+                text = "Selam ${_courierName.value}! Ben KuryeCüzdan mali asistanınım. Bu ayki KDV durumun, kapıda nakit tahsilat mahsuplaşması, hak edişlerin veya Bağkur ödemelerinle ilgili aklına takılan her şeyi bana sorabilirsin.",
                 isUser = false
             )
         )
@@ -81,9 +120,6 @@ class CourierViewModel(
 
     private val _isChatLoading = MutableStateFlow(false)
     val isChatLoading: StateFlow<Boolean> = _isChatLoading.asStateFlow()
-
-    private val _courierName = MutableStateFlow("Burak")
-    val courierName: StateFlow<String> = _courierName.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -314,10 +350,6 @@ class CourierViewModel(
         }
     }
 
-    fun setCourierName(name: String) {
-        _courierName.value = name
-    }
-
     fun resetAllData() {
         viewModelScope.launch {
             repository.deleteAllData()
@@ -327,7 +359,8 @@ class CourierViewModel(
     fun scanReceiptImage(bitmap: Bitmap) {
         viewModelScope.launch {
             _scanState.value = ScanUiState.Scanning
-            val result = geminiService.scanReceipt(bitmap)
+            val effectiveKey = getEffectiveApiKey()
+            val result = geminiService.scanReceipt(bitmap, apiKeyOverride = effectiveKey)
             result.fold(
                 onSuccess = { parsed ->
                     _scanState.value = ScanUiState.Success(parsed)
@@ -365,10 +398,12 @@ class CourierViewModel(
                 - Beyannameye Kalan Gün: ${currentSummary.daysUntilDeclaration} gün (Her ayın 28'i)
             """.trimIndent()
 
+            val effectiveKey = getEffectiveApiKey()
             val result = geminiService.chatWithAssistant(
                 history = _chatMessages.value,
                 userMessage = prompt,
-                courierContext = contextInfo
+                courierContext = contextInfo,
+                apiKeyOverride = effectiveKey
             )
 
             result.fold(
